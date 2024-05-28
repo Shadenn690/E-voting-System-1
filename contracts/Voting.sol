@@ -22,6 +22,9 @@ contract Voting {
     event VoteCasted(string idNumber, uint256 candidateIndex); // Event for vote casting
 
     constructor(string[] memory _candidateNames, uint256 _votingPeriodMinutes, string[] memory _authorizedIdNumbers) {
+        // Check if candidate names array is not empty
+        require(_candidateNames.length > 0, "Candidate names array must not be empty");
+
         uint256 length = _candidateNames.length;
         for (uint256 i = 0; i < length; i++) {
             string memory candidateName = _candidateNames[i];
@@ -30,10 +33,14 @@ contract Voting {
                 totalVotes: 0
             }));
         }
+
         deployer = msg.sender;
         votingStartTime = block.timestamp;
         uint256 _votingPeriodSeconds = _votingPeriodMinutes * 1 minutes;
         votingEndTime = votingStartTime + _votingPeriodSeconds;
+
+        // Check if authorized voters array is not empty
+        require(_authorizedIdNumbers.length > 0, "Authorized ID numbers array must not be empty");
 
         for (uint256 i = 0; i < _authorizedIdNumbers.length; i++) {
             authorizedVoters[_authorizedIdNumbers[i]] = true;
@@ -80,10 +87,5 @@ contract Voting {
         candidates[_candidateIndex].totalVotes++;
         voters[msg.sender].hasVoted = true;
         emit VoteCasted(_idNumber, _candidateIndex); // Emit event for vote casting
-    }
-
-    function destroyContract() public deployerOnly {
-        require(block.timestamp >= votingEndTime, "Voting period is not over yet.");
-        selfdestruct(payable(deployer));
     }
 }
