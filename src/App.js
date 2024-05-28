@@ -45,8 +45,10 @@ function App() {
         contractAddress, contractAbi, signer
       );
 
+      console.log(`Voting with idNumber: ${idNumber}, candidateIndex: ${candidateIndex}`);
       const tx = await contractInstance.vote(idNumber, candidateIndex);
       await tx.wait();
+      console.log("Vote cast successfully");
       getCandidates();
       checkCanVote();
     } catch (error) {
@@ -64,6 +66,7 @@ function App() {
       );
       const voter = await contractInstance.voters(await signer.getAddress());
       setCanVote(!voter.hasVoted);
+      console.log(`Can vote: ${!voter.hasVoted}`);
     } catch (error) {
       console.error("Error checking if can vote:", error);
     }
@@ -100,6 +103,7 @@ function App() {
         contractAddress, contractAbi, signer
       );
       const status = await contractInstance.getCurrentVotingStatus();
+      console.log(`Voting status: ${status}`);
       setVotingStatus(status);
     } catch (error) {
       console.error("Error fetching voting status:", error);
