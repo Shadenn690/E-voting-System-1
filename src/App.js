@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import {ethers} from 'ethers';
-import {contractAbi, contractAddress} from './Constant/constant';
+import { ethers } from 'ethers';
+import { contractAbi, contractAddress } from './Constant/constant';
 import Login from './Components/Login';
 import Finished from './Components/Finished';
 import Connected from './Components/Connected';
@@ -11,66 +11,70 @@ function App() {
   const [account, setAccount] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [votingStatus, setVotingStatus] = useState(true);
-  const [remainingTime, setremainingTime] = useState('');
+  const [remainingTime, setRemainingTime] = useState('');
   const [candidates, setCandidates] = useState([]);
-  const [number, setNumber] = useState('null');
+  const [number, setNumber] = useState(null);
   const [idNumber, setIdNumber] = useState('');
-  const [CanVote, setCanVote] = useState(true);
+  const [canVote, setCanVote] = useState(true);
 
-
-  useEffect( () => {
-    if(isConnected){
+  useEffect(() => {
+    if (isConnected) {
       getCandidates();
       calculateRemainingTime();
       getCurrentStatus();
       checkCanVote();
     }
-    
+
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
     }
 
-    return() => {
+    return () => {
       if (window.ethereum) {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
-    }
-  },[isConnected]);
-
+    };
+  }, [isConnected]);
 
   async function vote(candidateIndex) {
+    try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
-      const contractInstance = new ethers.Contract (
+      const contractInstance = new ethers.Contract(
         contractAddress, contractAbi, signer
       );
 
-      const tx = await contractInstance.vote(number);
+      const tx = await contractInstance.vote(idNumber, candidateIndex);
       await tx.wait();
       getCandidates();
-      //canVote();
       checkCanVote();
+    } catch (error) {
+      console.error("Error while voting:", error);
+    }
   }
 
-
   async function checkCanVote() {
+    try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
-      const contractInstance = new ethers.Contract (
+      const contractInstance = new ethers.Contract(
         contractAddress, contractAbi, signer
       );
       const voter = await contractInstance.voters(await signer.getAddress());
-      setCanVote(voter.hasVoted);
-
+      setCanVote(!voter.hasVoted);
+    } catch (error) {
+      console.error("Error checking if can vote:", error);
+    }
   }
 
   async function getCandidates() {
+    try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
-      const contractInstance = new ethers.Contract (
+      const contractInstance = new ethers.Contract(
         contractAddress, contractAbi, signer
       );
       const candidatesList = await contractInstance.fetchTotalVotesForCandidates();
@@ -79,33 +83,42 @@ function App() {
           index: index,
           name: candidate.name,
           totalVotes: candidate.totalVotes.toNumber()
-        }
+        };
       });
       setCandidates(formattedCandidates);
+    } catch (error) {
+      console.error("Error fetching candidates:", error);
+    }
   }
 
-
   async function getCurrentStatus() {
+    try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
-      const contractInstance = new ethers.Contract (
+      const contractInstance = new ethers.Contract(
         contractAddress, contractAbi, signer
       );
       const status = await contractInstance.getCurrentVotingStatus();
-      console.log(status);
       setVotingStatus(status);
+    } catch (error) {
+      console.error("Error fetching voting status:", error);
+    }
   }
 
   async function calculateRemainingTime() {
+    try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
-      const contractInstance = new ethers.Contract (
+      const contractInstance = new ethers.Contract(
         contractAddress, contractAbi, signer
       );
       const time = await contractInstance.calculateRemainingTime();
-      setremainingTime(parseInt(time, 16));
+      setRemainingTime(parseInt(time, 16));
+    } catch (error) {
+      console.error("Error calculating remaining time:", error);
+    }
   }
 
   function handleAccountsChanged(accounts) {
@@ -127,8 +140,6 @@ function App() {
         const signer = provider.getSigner();
         const address = await signer.getAddress();
         setAccount(address);
-        setNumber(number);
-        setIdNumber(idNumber)
         console.log("Metamask Connected : " + address);
         setIsConnected(true);
         checkCanVote();
@@ -136,46 +147,45 @@ function App() {
         console.error(err);
       }
     } else {
-      console.error("Metamask is not detected in the browser")
+      console.error("Metamask is not detected in the browser");
     }
   }
 
-  async function handleNumberChange(e) {
+  function handleNumberChange(e) {
     const index = e.target.value;
     console.log("Index is Selected: ", index);
     setNumber(index);
   }
-  function handleIdNumberChange(e){
+
+  function handleIdNumberChange(e) {
     const id = e.target.value;
-    console.log("ID Number entered: ", id)
+    console.log("ID Number entered: ", id);
     setIdNumber(e.target.value);
   }
 
   return (
     <div className="App">
-      { votingStatus ? (isConnected ? (<Connected 
-                      account = {account}
-                      candidates = {candidates}
-                      remainingTime = {remainingTime}
-                      number= {number}
-                      isNumber={idNumber}
-                      handleNumberChange = {handleNumberChange}
-                      handleIdNumberChange ={handleIdNumberChange}
-                      voteFunction = {vote}
-                      showButton = {CanVote}/>) 
-                      
-                      : 
-                      
-                      (<Login connectWallet = {connectToMetamask}/>)) : (<Finished />)}
-      
+      {votingStatus ? (
+        isConnected ? (
+          <Connected
+            account={account}
+            candidates={candidates}
+            remainingTime={remainingTime}
+            number={number}
+            isNumber={idNumber}
+            handleNumberChange={handleNumberChange}
+            handleIdNumberChange={handleIdNumberChange}
+            voteFunction={vote}
+            showButton={canVote}
+          />
+        ) : (
+          <Login connectWallet={connectToMetamask} />
+        )
+      ) : (
+        <Finished />
+      )}
     </div>
   );
-
-
-
 }
-
-
-
 
 export default App;
