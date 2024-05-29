@@ -11,17 +11,15 @@ contract Voting {
     }
 
     Candidate[] public candidates;
-    address deployer;
+    address public deployer;
     mapping(address => Voter) public voters;
-    mapping(string => bool) public authorizedVoters;
 
     uint256 public votingStartTime;
     uint256 public votingEndTime;
 
-    event VoterAuthorized(string idNumber); // Event for authorized voters
-    event VoteCasted(string idNumber, uint256 candidateIndex); // Event for vote casting
+    event VoteCasted(address voter, uint256 candidateIndex); // Event for vote casting
 
-    constructor(string[] memory _candidateNames, uint256 _votingPeriodMinutes, string[] memory _authorizedIdNumbers) {
+    constructor(string[] memory _candidateNames, uint256 _votingPeriodMinutes) {
         uint256 length = _candidateNames.length;
         for (uint256 i = 0; i < length; i++) {
             string memory candidateName = _candidateNames[i];
@@ -34,15 +32,10 @@ contract Voting {
         votingStartTime = block.timestamp;
         uint256 _votingPeriodSeconds = _votingPeriodMinutes * 1 minutes;
         votingEndTime = votingStartTime + _votingPeriodSeconds;
-
-        for (uint256 i = 0; i < _authorizedIdNumbers.length; i++) {
-            authorizedVoters[_authorizedIdNumbers[i]] = true;
-            emit VoterAuthorized(_authorizedIdNumbers[i]); // Emit event for authorized voters
-        }
     }
 
     modifier deployerOnly {
-        require(msg.sender == deployer);
+        require(msg.sender == deployer, "Only deployer can call this function");
         _;
     }
 
@@ -56,7 +49,6 @@ contract Voting {
 
     function calculateRemainingTime() public view returns (uint256) {
         require(block.timestamp >= votingStartTime, "Voting has not started yet.");
-
         if (block.timestamp >= votingEndTime) {
             return 0;
         } else {
@@ -72,14 +64,13 @@ contract Voting {
         }));
     }
 
-    function vote(string memory _idNumber, uint256 _candidateIndex) public {
-        require(authorizedVoters[_idNumber], "You are not authorized to vote.");
+    function vote(uint256 _candidateIndex) public {
         require(!voters[msg.sender].hasVoted, "Voting multiple times is not allowed.");
         require(_candidateIndex < candidates.length, "Candidate index does not exist.");
 
         candidates[_candidateIndex].totalVotes++;
         voters[msg.sender].hasVoted = true;
-        emit VoteCasted(_idNumber, _candidateIndex); // Emit event for vote casting
+        emit VoteCasted(msg.sender, _candidateIndex); // Emit event for vote casting
     }
 
     function destroyContract() public deployerOnly {
