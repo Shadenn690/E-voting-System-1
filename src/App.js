@@ -23,6 +23,13 @@ function App() {
       calculateRemainingTime();
       getCurrentStatus();
       checkCanVote();
+  const [number, setNumber] = useState(null);
+  const [canVote, setCanVote] = useState(true);
+
+  useEffect(() => {
+    if (isConnected) {
+      console.log("Connected, loading data...");
+      loadBlockchainData();
     }
 
     if (window.ethereum) {
@@ -38,6 +45,23 @@ function App() {
 
   async function vote(candidateIndex) {
     try {
+  async function loadBlockchainData() {
+    try {
+      console.log("Fetching candidates...");
+      await getCandidates();
+      console.log("Calculating remaining time...");
+      await calculateRemainingTime();
+      console.log("Fetching current status...");
+      await getCurrentStatus();
+      console.log("Checking voting status...");
+      await checkCanVote();
+    } catch (error) {
+      console.error("Error loading blockchain data:", error);
+    }
+  }
+
+  async function vote() {
+    try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
@@ -47,12 +71,21 @@ function App() {
 
       console.log(`Voting with idNumber: ${idNumber}, candidateIndex: ${candidateIndex}`);
       const tx = await contractInstance.vote(idNumber, candidateIndex);
+      console.log("Voting for candidate index:", number);
+      const tx = await contractInstance.vote(number);
       await tx.wait();
       console.log("Vote cast successfully");
       getCandidates();
       checkCanVote();
     } catch (error) {
       console.error("Error while voting:", error);
+    }
+  }
+      console.log("Voted successfully");
+      await checkCanVote();
+      await getCandidates();
+    } catch (err) {
+      console.error("Error while voting:", err);
     }
   }
 
@@ -70,6 +103,11 @@ function App() {
     } catch (error) {
       console.error("Error checking if can vote:", error);
     }
+      console.log("Has voted status:", voter.hasVoted);
+      setCanVote(voter.hasVoted); // Show button if the user has not voted
+    } catch (err) {
+      console.error("Error checking canVote status:", err);
+    }
   }
 
   async function getCandidates() {
@@ -80,6 +118,8 @@ function App() {
       const contractInstance = new ethers.Contract(
         contractAddress, contractAbi, signer
       );
+  
+      console.log("Fetching candidates from contract...");
       const candidatesList = await contractInstance.fetchTotalVotesForCandidates();
       const formattedCandidates = candidatesList.map((candidate, index) => {
         return {
@@ -88,11 +128,27 @@ function App() {
           totalVotes: candidate.totalVotes.toNumber()
         };
       });
+      console.log("Candidates fetched from contract:", candidatesList);
+  
+      const formattedCandidates = candidatesList.map((candidate, index) => ({
+        index: index,
+        name: candidate.name,
+        totalVotes: candidate.totalVotes.toNumber()
+      }));
+  
+      console.log("Formatted candidates:", formattedCandidates);
       setCandidates(formattedCandidates);
     } catch (error) {
       console.error("Error fetching candidates:", error);
     }
+    } catch (err) {
+      console.error("Error fetching candidates:", err);
+    }
   }
+  
+
+  
+  
 
   async function getCurrentStatus() {
     try {
@@ -104,9 +160,13 @@ function App() {
       );
       const status = await contractInstance.getCurrentVotingStatus();
       console.log(`Voting status: ${status}`);
+      console.log("Voting status:", status);
       setVotingStatus(status);
     } catch (error) {
       console.error("Error fetching voting status:", error);
+    }
+    } catch (err) {
+      console.error("Error fetching voting status:", err);
     }
   }
 
@@ -122,6 +182,12 @@ function App() {
       setRemainingTime(parseInt(time, 16));
     } catch (error) {
       console.error("Error calculating remaining time:", error);
+    }
+      const remainingTime = parseInt(time.toString(), 10);
+      console.log("Remaining time:", remainingTime);
+      setRemainingTime(remainingTime);
+    } catch (err) {
+      console.error("Error fetching remaining time:", err);
     }
   }
 
@@ -179,6 +245,23 @@ function App() {
             isNumber={idNumber}
             handleNumberChange={handleNumberChange}
             handleIdNumberChange={handleIdNumberChange}
+            voteFunction={vote}
+            showButton={canVote}
+          />
+        ) : (
+          <Login connectWallet={connectToMetamask} />
+        )
+      ) : (
+        <Finished />
+      )}
+      {votingStatus ? (
+        isConnected ? (
+          <Connected
+            account={account}
+            candidates={candidates}
+            remainingTime={remainingTime}
+            number={number}
+            handleNumberChange={handleNumberChange}
             voteFunction={vote}
             showButton={canVote}
           />
